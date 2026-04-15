@@ -46,13 +46,58 @@ function parseJsonMaybe(value, fallback) {
 }
 
 function mapReport(report) {
+  const eventDate = report.eventdate ?? report.eventDate ?? "";
+  const headerImage =
+    report.headerimage ?? report.headerImage ?? "header-1.png";
+  const circularImage = report.circularimage ?? report.circularImage ?? null;
+  const posterImage = report.posterimage ?? report.posterImage ?? null;
+  const registrationImages = parseJsonMaybe(
+    report.registrationimages ?? report.registrationImages,
+    [],
+  );
+  const eventImages = parseJsonMaybe(
+    report.eventimages ?? report.eventImages,
+    [],
+  );
+  const winnerGroups = parseJsonMaybe(
+    report.winnergroups ?? report.winnerGroups,
+    [],
+  );
+  const customSections = parseJsonMaybe(
+    report.customsections ?? report.customSections,
+    [],
+  );
+  const sectionOrder = parseJsonMaybe(
+    report.sectionorder ?? report.sectionOrder,
+    DEFAULT_SECTION_ORDER,
+  );
+  const uploadedWordFile =
+    report.uploadedwordfile ?? report.uploadedWordFile ?? null;
+  const shareCode = report.sharecode ?? report.shareCode ?? null;
+  const rejectionNote = report.rejectionnote ?? report.rejectionNote ?? null;
+  const createdBy = report.createdby ?? report.createdBy ?? null;
+  const creatorName = report.creatorname ?? report.creatorName ?? null;
+  const createdAt = report.createdat ?? report.createdAt ?? null;
+  const updatedAt = report.updatedat ?? report.updatedAt ?? null;
+
   return {
     ...report,
-    winnerGroups: parseJsonMaybe(report.winnerGroups, []),
-    customSections: parseJsonMaybe(report.customSections, []),
-    registrationImages: parseJsonMaybe(report.registrationImages, []),
-    eventImages: parseJsonMaybe(report.eventImages, []),
-    sectionOrder: parseJsonMaybe(report.sectionOrder, DEFAULT_SECTION_ORDER),
+    eventDate,
+    headerImage,
+    circularImage,
+    posterImage,
+    registrationImages,
+    eventImages,
+    winnerGroups,
+    customSections,
+    sectionOrder,
+    uploadedWordFile,
+    shareCode,
+    rejectionNote,
+    createdBy,
+    creatorName,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -104,7 +149,7 @@ async function uploadFile(file, folder = "reports") {
 async function fetchReportById(reportId, user) {
   let query = supabase.from("reports").select("*").eq("id", reportId);
   if (user?.role !== "admin") {
-    query = query.eq("createdBy", user?.id);
+    query = query.eq("createdby", user?.id);
   }
   const { data, error } = await query.single();
   if (error || !data) throw makeApiError("Report not found");
@@ -234,12 +279,12 @@ export const authApi = {
 function normalizeReportPayload(form) {
   return {
     title: form.title,
-    eventDate: form.eventDate,
+    eventdate: form.eventDate,
     description: form.description || "",
-    headerImage: form.headerImage || "header-1.png",
-    winnerGroups: JSON.stringify(form.winnerGroups || []),
-    customSections: JSON.stringify(form.customSections || []),
-    sectionOrder: JSON.stringify(form.sectionOrder || DEFAULT_SECTION_ORDER),
+    headerimage: form.headerImage || "header-1.png",
+    winnergroups: JSON.stringify(form.winnerGroups || []),
+    customsections: JSON.stringify(form.customSections || []),
+    sectionorder: JSON.stringify(form.sectionOrder || DEFAULT_SECTION_ORDER),
   };
 }
 
@@ -282,9 +327,9 @@ export const reportApi = {
     let query = supabase
       .from("reports")
       .select("*")
-      .order("updatedAt", { ascending: false });
+      .order("updatedat", { ascending: false });
     if (user?.role !== "admin") {
-      query = query.eq("createdBy", user?.id);
+      query = query.eq("createdby", user?.id);
     }
 
     const { data, error } = await query;
@@ -300,7 +345,7 @@ export const reportApi = {
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .eq("shareCode", shareCode)
+      .eq("sharecode", shareCode)
       .single();
     if (error || !data) throw makeApiError("Invalid share code");
     return mapReport(data);
@@ -321,14 +366,14 @@ export const reportApi = {
     const insertData = {
       id: randomId(),
       ...payload,
-      circularImage: uploaded.circularImage,
-      posterImage: uploaded.posterImage,
-      registrationImages: JSON.stringify(uploaded.registrationImages),
-      eventImages: JSON.stringify(uploaded.eventImages),
+      circularimage: uploaded.circularImage,
+      posterimage: uploaded.posterImage,
+      registrationimages: JSON.stringify(uploaded.registrationImages),
+      eventimages: JSON.stringify(uploaded.eventImages),
       status: "draft",
-      createdBy: user?.id || null,
-      creatorName: user?.fullName || null,
-      updatedAt: new Date().toISOString(),
+      createdby: user?.id || null,
+      creatorname: user?.fullName || null,
+      updatedat: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -363,18 +408,18 @@ export const reportApi = {
 
     const payload = {
       ...normalizeReportPayload(form),
-      circularImage: uploaded.circularImage,
-      posterImage: uploaded.posterImage,
-      registrationImages: JSON.stringify(uploaded.registrationImages),
-      eventImages: JSON.stringify(uploaded.eventImages),
-      updatedAt: new Date().toISOString(),
+      circularimage: uploaded.circularImage,
+      posterimage: uploaded.posterImage,
+      registrationimages: JSON.stringify(uploaded.registrationImages),
+      eventimages: JSON.stringify(uploaded.eventImages),
+      updatedat: new Date().toISOString(),
     };
 
     const query = options.shareCode
       ? supabase
           .from("reports")
           .update(payload)
-          .eq("shareCode", options.shareCode)
+          .eq("sharecode", options.shareCode)
       : supabase.from("reports").update(payload).eq("id", id);
 
     const { data, error } = await query.select("*").single();
@@ -391,19 +436,19 @@ export const reportApi = {
     const payload = {
       id: randomId(),
       title,
-      eventDate,
+      eventdate: eventDate,
       description: "Report created from uploaded document.",
-      headerImage: "header-1.png",
-      winnerGroups: "[]",
-      customSections: "[]",
-      registrationImages: "[]",
-      eventImages: "[]",
-      sectionOrder: JSON.stringify(DEFAULT_SECTION_ORDER),
-      uploadedWordFile,
+      headerimage: "header-1.png",
+      winnergroups: "[]",
+      customsections: "[]",
+      registrationimages: "[]",
+      eventimages: "[]",
+      sectionorder: JSON.stringify(DEFAULT_SECTION_ORDER),
+      uploadedwordfile: uploadedWordFile,
       status: "draft",
-      createdBy: user?.id || null,
-      creatorName: user?.fullName || null,
-      updatedAt: new Date().toISOString(),
+      createdby: user?.id || null,
+      creatorname: user?.fullName || null,
+      updatedat: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -421,8 +466,8 @@ export const reportApi = {
       .from("reports")
       .update({
         status: "pending",
-        rejectionNote: null,
-        updatedAt: new Date().toISOString(),
+        rejectionnote: null,
+        updatedat: new Date().toISOString(),
       })
       .eq("id", id)
       .select("*")
@@ -436,8 +481,8 @@ export const reportApi = {
       .from("reports")
       .update({
         status: "approved",
-        rejectionNote: null,
-        updatedAt: new Date().toISOString(),
+        rejectionnote: null,
+        updatedat: new Date().toISOString(),
       })
       .eq("id", id)
       .select("*")
@@ -451,8 +496,8 @@ export const reportApi = {
       .from("reports")
       .update({
         status: "rejected",
-        rejectionNote: rejectionNote || "No reason provided",
-        updatedAt: new Date().toISOString(),
+        rejectionnote: rejectionNote || "No reason provided",
+        updatedat: new Date().toISOString(),
       })
       .eq("id", id)
       .select("*")
@@ -469,18 +514,18 @@ export const reportApi = {
   async generateShareCode(id) {
     const { data: report, error: fetchError } = await supabase
       .from("reports")
-      .select("shareCode")
+      .select("sharecode")
       .eq("id", id)
       .single();
     if (fetchError)
       throw makeApiError(fetchError.message || "Report not found");
-    if (report.shareCode) return report.shareCode;
+    if (report.sharecode) return report.sharecode;
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const code = randomShareCode();
       const { error } = await supabase
         .from("reports")
-        .update({ shareCode: code })
+        .update({ sharecode: code })
         .eq("id", id);
       if (!error) return code;
       if (
@@ -546,6 +591,39 @@ async function getArrayBufferFromUrl(url) {
   return response.arrayBuffer();
 }
 
+async function getPngDataFromUrl(url) {
+  if (!url) return null;
+  try {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    image.src = url;
+    await loaded;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext("2d");
+
+    // Use white backdrop so transparent pixels stay readable in Word viewers.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0);
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/png"),
+    );
+    if (!blob) return null;
+
+    return new Uint8Array(await blob.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 async function addImageToPdf(doc, url, x, y, w, h) {
   if (!url) return;
   try {
@@ -562,10 +640,19 @@ async function addImageToPdf(doc, url, x, y, w, h) {
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
     const ctx = canvas.getContext("2d");
+
+    // Composite onto white first so transparent PNG regions don't render black in PDF encoders.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    doc.addImage(dataUrl, "JPEG", x, y, w, h);
+    const isPng = /\.png($|\?)/i.test(url);
+    const format = isPng ? "PNG" : "JPEG";
+    const dataUrl = isPng
+      ? canvas.toDataURL("image/png")
+      : canvas.toDataURL("image/jpeg", 0.92);
+
+    doc.addImage(dataUrl, format, x, y, w, h);
   } catch {
     // Skip images that cannot be loaded.
   }
@@ -582,7 +669,7 @@ export async function exportReportAsDocx(report, fileName) {
       : resolveAssetUrl(mapped.headerImage);
 
   if (headerUrl) {
-    const headerBuffer = await getArrayBufferFromUrl(headerUrl);
+    const headerBuffer = await getPngDataFromUrl(headerUrl);
     if (headerBuffer) {
       children.push(
         new Paragraph({
@@ -658,14 +745,18 @@ export async function exportReportAsDocx(report, fileName) {
   const addImageFromPath = async (path, width = 500, height = 350) => {
     const src = resolveAssetUrl(path);
     if (!src) return;
-    const buffer = await getArrayBufferFromUrl(src);
+    const buffer = await getPngDataFromUrl(src);
     if (!buffer) return;
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 120, after: 120 },
         children: [
-          new ImageRun({ data: buffer, transformation: { width, height } }),
+          new ImageRun({
+            data: buffer,
+            transformation: { width, height },
+            type: "png",
+          }),
         ],
       }),
     );
@@ -833,10 +924,13 @@ export async function exportReportAsDocx(report, fileName) {
   });
 
   const blob = await Packer.toBlob(doc);
+  const safeFileName = (fileName || "report")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_");
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${fileName}.docx`;
+  a.download = `${safeFileName}.docx`;
   document.body.appendChild(a);
   a.click();
   a.remove();
